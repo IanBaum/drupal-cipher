@@ -1,0 +1,126 @@
+<?php
+
+function cipher_menu() {
+  $items['cipher'] = array(
+  'title' => 'Cipher',
+      'access callback' => TRUE,
+      'type' => MENU_NORMAL_ITEM,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('cipher_form'),
+    );
+    $items['cipher_results'] = array(
+      'title' => 'Cipher',
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+      'page callback' => 'cipher_results',
+    );
+    return $items;
+}
+
+function cipher_form(){
+  $form['phrase']=array(
+    '#title' => 'Starting Phrase',
+    '#type' => 'textfield',
+    '#description' => 'Enter your starting phrase.',
+    '#required' => TRUE,
+    '#element_validate' => array('element_validate_cipher_phrase'),
+  );
+
+  $form['shift_direction']=array(
+    '#title' => 'Shift Direction',
+    '#type' => 'textfield',
+    '#description' => 'Enter the direction to shift the letters (left or right).',
+    '#required' => TRUE,
+    '#element_validate' => array('element_validate_cipher_direction'),
+  );
+
+  $form['shift_value']=array(
+    '#title' => 'Shift Value',
+    '#type' => 'textfield',
+    '#description' => 'Enter the amount of spaces to shift the letters.',
+    '#required' => TRUE,
+    '#element_validate' => array('element_validate_cipher_value'),
+  );
+
+  $form['submit'] = array(
+     '#type' => 'submit',
+     '#value' => 'Submit',
+   );
+
+  return $form;
+}
+
+function cipher_form_submit($form, &$form_state){
+  $input_phrase = $form_state['values']['phrase'];
+  $shift_direction = $form_state['values']['shift_direction'];
+  $shift_value_char = $form_state['values']['shift_value'];
+  $shift_value = intval($shift_value_char);
+  $shift = null;
+
+  if(strtolower($shift_direction) == 'left'){
+    $shift = ($shift_value * -1);
+  }else if (strtolower($shift_direction) == 'right'){
+    $shift = $shift_value;
+  }
+
+  while($shift > 26){
+    $shift -= 25;
+  }
+
+  $input_phrase_split = str_split($input_phrase);
+  $input_as_numbers = array();
+  for($i = 0; $i < count($input_phrase_split); $i++){
+    array_push($input_as_numbers, (ord(strtolower($input_phrase_split[$i]))-96));
+  }
+
+  $output_as_numbers = array();
+  for($i = 0; $i < count($input_as_numbers); $i++){
+    if($input_as_numbers[$i] >= 1 && $input_as_numbers[$i] <=26){
+      $input_as_numbers[$i] += $shift;
+      while($input_as_numbers[$i] > 26){
+        $input_as_numbers[$i] -= 26;
+      }
+      while($input_as_numbers[$i] < 1){
+        $input_as_numbers[$i] += 26;
+      }
+      array_push($output_as_numbers, $input_as_numbers[$i]);
+    }else {
+      array_push($output_as_numbers, $input_as_numbers[$i]);
+    }
+  }
+
+  $output_phrase = "";
+  for($i = 0; $i <count($output_as_numbers); $i++){
+    $output_phrase .= chr($output_as_numbers[$i] + 96);
+  }
+  $_SESSION['output_phrase'] = $output_phrase;
+  $form_state['redirect'] = 'cipher_results';
+
+}
+
+function cipher_results(){
+  $output_phrase = $_SESSION['output_phrase'];
+
+  return $output_phrase;
+}
+
+function element_validate_cipher_direction($element){
+  $directions = ['left', 'right'];
+  if(!in_array(strtolower($element['#value']), $directions)){
+    form_error($element, t('Please enter "left" or "right" for shift direction.'));
+  }
+}
+function element_validate_cipher_value($element){
+  if(intval($element['#value']) < 1){
+    form_error($element, t('Please enter a number greater than 1.'));
+  }
+}
+function element_validate_cipher_phrase($element){
+  $valid_characters = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','!','.',',','?',':',';',' '];
+  $phrase_split = str_split($element['#value']);
+  for($i = 0; $i < count($phrase_split); $i++){
+    if(!in_array(strtolower($phrase_split{0}), $valid_characters)){
+      form_error($element, t('Please enter letters and puncuation only in your phrase.'));
+    }
+  }
+}
